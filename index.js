@@ -2,7 +2,7 @@ const express = require('express');
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 const cors = require('cors');
-
+const ObjectId = require('mongodb').ObjectId;
 const app = express();
 
 
@@ -39,6 +39,22 @@ async function run() {
         app.post('/api/add-billing', async (req, res) => {
             const result = await billingCollection.insertOne(req.body)
             res.json(result)
+        })
+        //Update bills API
+        app.put('/api/update-billing/:id', async (req, res) => {
+            const id = ObjectId(req.params.id);
+            const data = req.body;
+            const filter = { _id: id };
+            const options = { upsert: true };
+            const updateDoc = { $set: data };
+            const result = await billingCollection.updateOne(filter, updateDoc, options);
+            res.json(result.modifiedCount > 0);
+        })
+        // Delete bills API
+        app.delete('/api/delete-billing/:id', async (req, res) => {
+            const id = ObjectId(req.params.id);
+            const result = await billingCollection.findOneAndDelete({ _id: id })
+            res.send(result.ok > 0)
         })
 
     }
