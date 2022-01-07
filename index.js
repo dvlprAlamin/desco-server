@@ -16,8 +16,7 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 async function verifyToken(req, res, next) {
     if (req.headers?.authorization?.startsWith('Bearer ')) {
         const token = await req.headers.authorization.split('Bearer ')[1];
-        const user = jwt.verify(token, process.env.JWT_SECRET)
-        console.log(user);
+        const user = jwt.verify(token, process.env.JWT_SECRET);
         req.decodedEmail = user.email;
     }
     next();
@@ -47,22 +46,24 @@ async function run() {
         // Get Billing data API
         app.get('/api/billing-list', verifyToken, async (req, res) => {
             // verifyToken
-            const validUser = await userCollection.findOne({ email: 'alamin' });
-            console.log('kisu', validUser);
-            const cursor = billingCollection.find({});
-            const sorted = cursor.sort({ _id: -1 })
-            const page = req.query.page;
-            const size = parseInt(req.query.size);
-            let bills;
-            const count = await cursor.count();
-            if (page) {
-                bills = await sorted.skip(page * size).limit(size).toArray();
+            const validUser = await userCollection.findOne({ email: req.decodedEmail });
+            if (validUser !== null) {
+                const cursor = billingCollection.find({});
+                const sorted = cursor.sort({ _id: -1 })
+                const page = req.query.page;
+                const size = parseInt(req.query.size);
+                let bills;
+                const count = await cursor.count();
+                if (page) {
+                    bills = await sorted.skip(page * size).limit(size).toArray();
+                }
+                else {
+                    bills = await sorted.toArray();
+                }
+                res.send(bills);
+            } else {
+                res.status(401).json({ message: 'User not authorized' })
             }
-            else {
-                bills = await sorted.toArray();
-            }
-            res.send(bills);
-            // res.send({ count, bills });
         });
 
         // Post bills API
@@ -102,10 +103,9 @@ async function run() {
         // User Register API
         app.post('/api/registration', async (req, res) => {
             const { name, email, password } = req.body;
-            const cursor = userCollection.find({ email })
-            const isExist = await cursor.toArray();
-            if (isExist.length > 0) {
-                res.status(409).send('Email already exists')
+            const isExist = await userCollection.findOne({ email })
+            if (isExist) {
+                res.status(409).json({ message: 'Email already exists' })
             } else {
                 const encryptPass = await bcrypt.hash(password, 10);
                 const result = await userCollection.insertOne({ name, email, password: encryptPass });
