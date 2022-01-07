@@ -11,6 +11,19 @@ app.use(express.json());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vsgsy.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
+const formValidation = data => {
+    let message = ''
+    const emailRegexp = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (data.name === '' || data.email === '' || data.phone === '' || data.amount === '') {
+        message = 'Please Insert some value';
+    } else if (!emailRegexp.test(data.email)) {
+        message = 'invalid email'
+    } else if (data.phone?.length !== 11) {
+        message = 'Phone number must be 11 digit'
+    }
+    return message
+}
+
 async function run() {
     try {
         await client.connect();
@@ -37,8 +50,14 @@ async function run() {
 
         // Post bills API
         app.post('/api/add-billing', async (req, res) => {
-            const result = await billingCollection.insertOne(req.body)
-            res.json(result)
+            const invalidMessage = formValidation(req.body);
+            if (!invalidMessage) {
+                const result = await billingCollection.insertOne(req.body)
+                res.json(result)
+            } else {
+                res.status(400).send(invalidMessage)
+            }
+
         })
         //Update bills API
         app.put('/api/update-billing/:id', async (req, res) => {
