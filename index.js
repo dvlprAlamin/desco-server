@@ -42,7 +42,6 @@ async function run() {
         const database = client.db(process.env.DB_NAME);
         const billingCollection = database.collection('billing-list');
         const userCollection = database.collection('user');
-
         // Get Billing data API
         app.get('/api/billing-list', verifyToken, async (req, res) => {
             // verifyToken
@@ -60,7 +59,7 @@ async function run() {
                 else {
                     bills = await sorted.toArray();
                 }
-                res.send(bills);
+                res.send({ count, bills });
             } else {
                 res.status(401).json({ message: 'User not authorized' })
             }
@@ -97,7 +96,7 @@ async function run() {
         app.delete('/api/delete-billing/:id', async (req, res) => {
             const id = ObjectId(req.params.id);
             const result = await billingCollection.findOneAndDelete({ _id: id })
-            res.send(result.ok > 0)
+            res.send(result)
         })
 
         // User Register API
