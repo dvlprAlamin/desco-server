@@ -26,14 +26,14 @@ async function verifyToken(req, res, next) {
 const formValidation = data => {
     let message = ''
     const emailRegexp = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    if (data.name === '' || data.email === '' || data.phone === '' || data.amount === '') {
-        message = 'Please Insert some value';
-    } else if (!emailRegexp.test(data.email)) {
-        message = 'invalid email'
-    } else if (data.phone?.length !== 11) {
-        message = 'Phone number must be 11 digit'
+    if (data.email !== undefined && !emailRegexp.test(data.email)) {
+        return message = 'invalid email'
+    } else if (data.phone !== undefined && data.phone?.length !== 11) {
+        return message = 'Phone number must be 11 digit'
+    } else {
+        return message
     }
-    return message
+
 }
 
 async function run() {
@@ -72,7 +72,7 @@ async function run() {
                 const result = await billingCollection.insertOne(req.body)
                 res.json(result)
             } else {
-                res.status(400).send(invalidMessage)
+                res.status(400).json({ message: invalidMessage })
             }
 
         })
@@ -88,7 +88,7 @@ async function run() {
                 const result = await billingCollection.updateOne(filter, updateDoc, options);
                 res.json(result.modifiedCount > 0);
             } else {
-                res.status(400).send(invalidMessage)
+                res.status(400).json({ message: invalidMessage })
             }
 
         })
@@ -98,7 +98,6 @@ async function run() {
             const result = await billingCollection.findOneAndDelete({ _id: id })
             res.send(result)
         })
-
         // User Register API
         app.post('/api/registration', async (req, res) => {
             const { name, email, password } = req.body;
