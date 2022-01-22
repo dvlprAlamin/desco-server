@@ -11,7 +11,7 @@ const app = express();
 
 
 app.use(cors({
-    origin: ["http://localhost:3000"],
+    origin: ["http://localhost:3000", "https://realdesco.netlify.app/", "https://alamin-howlader.netlify.app",],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
 }));
@@ -27,7 +27,6 @@ app.use(session({
         path: '/'
     }
 }))
-let sess
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vsgsy.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
@@ -152,11 +151,7 @@ async function run() {
                 return res.status(400).json({ message: 'Invalid Email' })
             }
             if (await bcrypt.compare(password, user.password)) {
-                // req.session.save((err, data) => {
-                //     console.log(err, data);
-                // });
                 req.session.userId = user;
-                console.log(req.session);
                 const token = jwt.sign({
                     id: user._id,
                     email: user.email
