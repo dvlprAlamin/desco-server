@@ -5,11 +5,29 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const ObjectId = require('mongodb').ObjectId;
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
 const app = express();
 
 
-app.use(cors());
+app.use(cors({
+    origin: ["http://localhost:3000"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser());
+app.use(session({
+    name: 'userId',
+    secret: process.env.COOKIE_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24,
+        path: '/'
+    }
+}))
+let sess
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vsgsy.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
@@ -42,6 +60,13 @@ async function run() {
         const database = client.db(process.env.DB_NAME);
         const billingCollection = database.collection('billing-list');
         const userCollection = database.collection('user');
+
+
+        // my portfolio messages
+        const messageCollection = database.collection('message');
+
+
+
         // Get Billing data API
         app.get('/api/billing-list', verifyToken, async (req, res) => {
             // verifyToken
@@ -112,6 +137,14 @@ async function run() {
         })
 
         // User Login API
+        app.get('/api/login', (req, res) => {
+            if (req.session.userId) {
+                res.send({ loggedIn: true, user: req.session.userId })
+            } else {
+                res.send({ loggedIn: false })
+            }
+        })
+
         app.post('/api/login', async (req, res) => {
             const { email, password } = req.body;
             const user = await userCollection.findOne({ email })
@@ -119,6 +152,11 @@ async function run() {
                 return res.status(400).json({ message: 'Invalid Email' })
             }
             if (await bcrypt.compare(password, user.password)) {
+                // req.session.save((err, data) => {
+                //     console.log(err, data);
+                // });
+                req.session.userId = user;
+                console.log(req.session);
                 const token = jwt.sign({
                     id: user._id,
                     email: user.email
@@ -129,6 +167,19 @@ async function run() {
             }
         })
 
+        // my portfolio message
+        app.post('/api/message', async (req, res) => {
+            const result = await messageCollection.insertOne(req.body)
+            res.json(result)
+        })
+        app.get('/api/message', async (req, res) => {
+            const cursor = messageCollection.find();
+            const result = await cursor.toArray()
+            res.json(result)
+        })
+
+
+
     }
     finally {
         // await client.close();
@@ -137,9 +188,9 @@ async function run() {
 
 run().catch(console.dir);
 
-app.get('/', (req, res) => {
-    res.send('server is ok');
-});
+// app.get('/', (req, res) => {
+//     res.send('server is ok');
+// });
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
     console.log('listen', port);
